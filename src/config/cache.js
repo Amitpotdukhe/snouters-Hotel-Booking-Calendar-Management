@@ -3,7 +3,7 @@ import redis from 'redis'
 let client = redis.createClient({
     socket: {
         port: 6379,
-        host: "127.0.0.1",
+        host: "host.docker.internal",
     }
 });
 //host.docker.internal
