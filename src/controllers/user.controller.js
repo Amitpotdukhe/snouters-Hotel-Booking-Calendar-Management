@@ -126,7 +126,7 @@ export const adminSignUp = async (req, res) => {
             password: password,
         });
         admin = await admin.save();
-        logger.info(`admin signup: ${JSON.stringify(req.body)}, ${token}`);
+        logger.info(`admin signup: ${JSON.stringify(req.body)}`);
 
         res.status(201).json({
             success: true,

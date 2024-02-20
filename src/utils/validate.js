@@ -13,7 +13,6 @@ export const validate = (req, res, next) => {
     } else {
         console.log('Email validation failed ', errors);
         return res.status(400).json({ errors: errors.array() });
-
     }
 };
 

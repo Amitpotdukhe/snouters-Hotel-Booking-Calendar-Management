@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import logger from '../utils/logger.js';
 
 export const userAuth = async (req, res, next) => {
     try {
@@ -17,6 +18,7 @@ export const userAuth = async (req, res, next) => {
         next();
     } catch (error) {
         console.log(error);
+        logger.error(`Error during user token verification: ${error.message}`);
         res.status(401).json({
             success: false,
             msg: "Error in token verification"

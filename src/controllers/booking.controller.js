@@ -1,7 +1,7 @@
 import Booking from "../model/Booking.model.js"
 import RoomAvailability from '../model/Availability.model.js';
 import mongoose from 'mongoose';
-import redisClient from '../config/cache.js'
+import logger from '../utils/logger.js';
 
 export const createBooking = async (req, res) => {
     try {
@@ -45,6 +45,7 @@ export const createBooking = async (req, res) => {
         );
 
         console.log("Updated room status : ", updatedRoomStatus);
+        logger.info(`createBooking : ${JSON.stringify(booking)}`);
         res.status(201).json({
             success: true,
             msg: "Booking created",
@@ -52,6 +53,7 @@ export const createBooking = async (req, res) => {
         })
     } catch (error) {
         console.log(error);
+        logger.error(`Error create booking: ${error.message}`);
         res.status(500).json({
             success: false,
             msg: error.message
@@ -72,8 +74,10 @@ async function checkAvailiblity(slotId) {
         if (isRoomAvailable.timeSlots[0].available) {
             return isRoomAvailable;
         }
+        logger.info(`checkAvailiblity:${JSON.stringify(isRoomAvailable)}`);
         return {};
     } catch (error) {
+        logger.error(`Error checkAvailiblity: ${error.message}`);
         console.log(error);
         return {};
     }
@@ -102,47 +106,53 @@ export const updateBooking = async (req, res) => {
                 success: false,
                 msg: "Cannot update booking of another user"
             })
-        }
-        const updatePreviousRoomStatus = await RoomAvailability.updateOne(
-            {
-                'timeSlots._id': new mongoose.Types.ObjectId(prevSlotId)
-            },
-            {
+            return;
+        } else {
+            const updatePreviousRoomStatus = await RoomAvailability.updateOne(
+                {
+                    'timeSlots._id': new mongoose.Types.ObjectId(prevSlotId)
+                },
+                {
+                    $set: {
+                        'timeSlots.$.available': true,
+                    }
+                }
+            );
+
+            const updateData = {
                 $set: {
-                    'timeSlots.$.available': true,
+                    startDate: isRoomAvailable.timeSlots[0].startDate,
+                    endDate: isRoomAvailable.timeSlots[0].endDate,
+                    roomType: roomType,
+                    slotId: newSlotId
                 }
             }
-        );
+            updateExistingBooking = await Booking.findByIdAndUpdate(bookingId, updateData, { new: true });
 
-        const updateData = {
-            $set: {
-                startDate: isRoomAvailable.timeSlots[0].startDate,
-                endDate: isRoomAvailable.timeSlots[0].endDate,
-                roomType: roomType,
-                slotId: newSlotId
-            }
-        }
-        updateExistingBooking = await Booking.findByIdAndUpdate(bookingId, updateData, { new: true });
+            console.log("updated : ", updateExistingBooking);
 
-        console.log("updated : ", updateExistingBooking);
-
-        const updateNewRoomStatus = await RoomAvailability.updateOne(
-            {
-                'timeSlots._id': new mongoose.Types.ObjectId(newSlotId)
-            },
-            {
-                $set: {
-                    'timeSlots.$.available': false,
+            const updateNewRoomStatus = await RoomAvailability.updateOne(
+                {
+                    'timeSlots._id': new mongoose.Types.ObjectId(newSlotId)
+                },
+                {
+                    $set: {
+                        'timeSlots.$.available': false,
+                    }
                 }
-            }
-        );
-        res.status(201).json({
-            success: true,
-            msg: "Room updated successfully.",
-            newRoomDetails: updateExistingBooking
-        })
+            );
+            logger.info(`updateBooking: ${bookingId}, ${prevSlotId} to ${newSlotId}, ${roomType}`);
+
+            res.status(201).json({
+                success: true,
+                msg: "Room updated successfully.",
+                newRoomDetails: updateExistingBooking
+            })
+        }
+
     } catch (error) {
         console.log(error);
+        logger.error(`Error updateBooking: ${error.message}`);
         res.status(500).json({
             success: false,
             msg: error.message
@@ -169,6 +179,7 @@ export const cancelBooking = async (req, res) => {
         );
 
         console.log(updateRoomAvailiblity);
+        logger.info(`cancelBooking: ${bookingId}`);
         res.status(201).json({
             success: true,
             msg: "Booking cancelled",
@@ -176,6 +187,7 @@ export const cancelBooking = async (req, res) => {
         })
     } catch (error) {
         console.log(error);
+        logger.error(`Error cancel Booking: ${error.message}`);
         res.status(500).json({
             success: false,
             msg: error.message
